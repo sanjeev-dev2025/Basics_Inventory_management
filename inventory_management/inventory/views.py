@@ -1,9 +1,10 @@
 
+from inventory.filters import InStockFilter
 from accounts.permissions import IsManager,IsCashier    
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
 from rest_framework import generics
 from inventory.models import Category,Product
-from inventory.filters import ProductFilter
+from inventory.filters import ProductFilter,InStockFilter
 from inventory.serializers import CategorySerializer,ProductSerializer  
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -18,7 +19,7 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset=Product.objects.all()
     serializer_class=ProductSerializer
     filter_class=ProductFilter
-    filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter]
+    filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
     search_fields=['name','category__name']
     ordering_fields=['price']
     
@@ -26,3 +27,37 @@ class ProductListCreateAPIView(generics.ListCreateAPIView):
         if self.request.method=='GET':
             return [IsAuthenticated()]
         return [IsManager(),IsAdminUser()]
+class ProductRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset=Product.objects.all()
+    serializer_class=ProductSerializer
+    def get_permissions(self):
+        if self.request.method=='GET':
+            return [IsAuthenticated()]
+        return [IsManager(),IsAdminUser()]
+class ProductDestroyAPIView(generics.DestroyAPIView):
+    queryset=Product.objects.all()
+    serializer_class=ProductSerializer
+    filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
+    filter_class=ProductFilter
+    search_fields=['name','category__name']
+    ordering_fields=['price']   
+    def get_permissions(self):
+        if self.request.method=='GET':
+            return [IsAuthenticated()]
+        return [IsManager(),IsAdminUser()]  
+class CategoryRetrieveUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset=Category.objects.all()
+    serializer_class=CategorySerializer
+    def get_permissions(self):
+        if self.request.method=='GET':
+            return [IsAuthenticated()]
+        return [IsManager(),IsAdminUser()]
+class CategoryDestroyAPIView(generics.DestroyAPIView):
+    queryset=Category.objects.all()
+    serializer_class=CategorySerializer
+    def get_permissions(self):
+        if self.request.method=='GET':
+            return [IsAuthenticated()]
+        return [IsManager(),IsAdminUser()]      
+
+

@@ -10,3 +10,11 @@ class IsCashier(BasePermission):
             request.user.is_authenticated
             and request.user.role == "CASHIER"
         )
+
+
+class IsManagerOrCashier(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated and
+            request.user.role in ["MANAGER", "CASHIER"]
+        )
