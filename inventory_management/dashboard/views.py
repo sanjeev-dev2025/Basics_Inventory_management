@@ -59,12 +59,12 @@ class Last7DaysProfitAPIView(APIView):
         return Response(formatted_data)
 from decimal import Decimal
 from django.db.models import F  
-class DailyProfitAPIView(APIView):
+class DailyReportAPIView(APIView):
     def get(self, request):
         today_items = SaleItem.objects.filter(
             sale__created_at__date=date.today()
         )
-
+        daily_sales=sum(item.subtotal for item in today_items)  
         daily_profit = Decimal("0.00")
 
         for item in today_items:
@@ -72,7 +72,7 @@ class DailyProfitAPIView(APIView):
             selling = item.unit_price
             daily_profit += (selling - cost) * item.quantity
 
-        return Response({"daily_profit": daily_profit})
+        return Response({"daily_profit": daily_profit,"daily_sales":daily_sales})
 class MonthlyProfitAPIView(APIView):
     def get(self, request):
         monthly_sales = Sale.objects.filter(

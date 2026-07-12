@@ -17,7 +17,7 @@ class SaleListCreateAPIView(generics.ListCreateAPIView):
             return [IsAuthenticated()]
         return [IsManagerOrCashier()]  
 class SaleItemListCreateAPIView(generics.ListCreateAPIView):
-    queryset=SaleItem.objects.all()
+    queryset=SaleItem.objects.all().order_by('-id')
     serializer_class=SaleItemSerializer
     filter_class=SaleItemFilter
     filter_backends=[InStockFilter,DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter]   
@@ -29,3 +29,10 @@ class SaleItemListCreateAPIView(generics.ListCreateAPIView):
         if self.request.method=='GET':
             return [IsAuthenticated()]
         return [IsManagerOrCashier()]       
+class SaleItemUpdateAPIView(generics.UpdateAPIView):
+    queryset = SaleItem.objects.all().order_by("-id")
+    serializer_class=SaleItemSerializer
+    def get_permissions(self):
+        if self.request.method=='GET':
+            return [IsAuthenticated] 
+        return[IsManagerOrCashier()]     

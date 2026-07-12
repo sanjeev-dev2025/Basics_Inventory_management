@@ -7,6 +7,8 @@ class Category(models.Model):
     description=models.TextField()
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True)  
+    class Meta:
+        ordering=['-id' ]
     def __str__(self):
         return self.name        
 class Product(models.Model):
@@ -17,6 +19,7 @@ class Product(models.Model):
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True) 
     cost_price=models.DecimalField(max_digits=10,decimal_places=2)
-        
+    class Meta:
+        ordering=['-id']
     def __str__(self):
         return self.name    

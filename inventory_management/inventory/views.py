@@ -9,14 +9,14 @@ from inventory.serializers import CategorySerializer,ProductSerializer
 from rest_framework import filters
 from django_filters.rest_framework import DjangoFilterBackend
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
-    queryset=Category.objects.all()
+    queryset=Category.objects.all().order_by('-id')
     serializer_class=CategorySerializer
     def get_permissions(self):
         if self.request.method=='GET':
             return [IsAuthenticated()]
         return [IsManager(),IsAdminUser()]
 class ProductListCreateAPIView(generics.ListCreateAPIView):
-    queryset=Product.objects.all()
+    queryset=Product.objects.all().order_by('-id')
     serializer_class=ProductSerializer
     filter_class=ProductFilter
     filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
