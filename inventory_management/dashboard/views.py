@@ -6,9 +6,11 @@ from rest_framework.response import Response
 from inventory.models import Product
 from sales.models import Sale,SaleItem
 from django.db.models import Sum
+from django.http import HttpResponse    
+import csv  
 class DashboardAPIView(GenericAPIView):
     def get(self, request):
-        low_stock = Product.objects.filter(quantity__lt=7)
+        low_stock = Product.objects.filter(stock__lt=7)
 
         return Response({
             "total_products": Product.objects.count(),
@@ -21,7 +23,7 @@ class DashboardAPIView(GenericAPIView):
             "low_stock_products": [
                 {
                     "name": product.name,
-                    "quantity": product.quantity,
+                    "quantity": product.stock,
                 }
                 for product in low_stock
             ],
@@ -71,17 +73,127 @@ class DailyReportAPIView(GenericAPIView):
             cost = item.product.cost_price
             selling = item.unit_price
             daily_profit += (selling - cost) * item.quantity
+           
 
         return Response({"daily_profit": daily_profit,"daily_sales":daily_sales})
 class MonthlyProfitAPIView(GenericAPIView):
     def get(self, request):
-        monthly_sales = Sale.objects.filter(
-            created_at__year=date.today().year,
-            created_at__month=date.today().month
+        monthly_items = SaleItem.objects.filter(
+            sale__created_at__year=date.today().year,
+            sale__created_at__month=date.today().month
         )
 
-        monthly_profit = monthly_sales.aggregate(
-            total_profit=Sum(F('total_amount'))
-        )['total_profit'] or Decimal("0.00")
+        monthly_sales = sum(item.subtotal for item in monthly_items)
 
-        return Response({"monthly_profit": monthly_profit}) 
+        monthly_profit = Decimal("0.00")
+
+        for item in monthly_items:
+            monthly_profit += (
+                item.unit_price - item.product.cost_price
+            ) * item.quantity
+
+        return Response({
+            "monthly_sales": monthly_sales,
+            "monthly_profit": monthly_profit
+        })
+
+class DailyReportCSVAPIView(GenericAPIView):
+    def get(self, request):
+        today_items = SaleItem.objects.filter(
+            sale__created_at__date=date.today()
+        )
+
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="daily_report.csv"'
+
+        writer = csv.writer(response)
+
+        # Header
+        writer.writerow([
+            "Product",
+            "Quantity",
+            "Cost Price",
+            "Selling Price",
+            "Subtotal",
+            "Profit"
+        ])
+
+        total_sales = Decimal("0.00")
+        total_profit = Decimal("0.00")
+
+        for item in today_items:
+            profit = (item.unit_price - item.product.cost_price) * item.quantity
+
+            total_sales += item.subtotal
+            total_profit += profit
+
+            writer.writerow([
+                item.product.name,
+                item.quantity,
+                item.product.cost_price,
+                item.unit_price,
+                item.subtotal,
+                profit
+            ])
+
+        # Empty row
+        writer.writerow([])
+
+        # Totals
+        writer.writerow(["Total Sales", total_sales])
+        writer.writerow(["Total Profit", total_profit])
+
+        return response
+class MonthlyReportCSVAPIView(GenericAPIView):
+    def get(self, request):
+        monthly_items = SaleItem.objects.filter(
+            sale__created_at__year=date.today().year,
+            sale__created_at__month=date.today().month
+        )
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="monthly_report_{date.today().strftime("%Y_%m")}.csv"'
+        )
+
+        writer = csv.writer(response)
+
+        # Header
+        writer.writerow([
+            "Date",
+            "Product",
+            "Quantity",
+            "Cost Price",
+            "Selling Price",
+            "Subtotal",
+            "Profit"
+        ])
+
+        total_sales = Decimal("0.00")
+        total_profit = Decimal("0.00")
+
+        for item in monthly_items:
+            profit = (item.unit_price - item.product.cost_price) * item.quantity
+
+            total_sales += item.subtotal
+            total_profit += profit
+
+            writer.writerow([
+                item.sale.created_at.strftime("%Y-%m-%d"),
+                item.product.name,
+                item.quantity,
+                item.product.cost_price,
+                item.unit_price,
+                item.subtotal,
+                profit
+            ])
+
+        # Blank row
+        writer.writerow([])
+
+        # Summary
+        writer.writerow(["Total Monthly Sales", total_sales])
+        writer.writerow(["Total Monthly Profit", total_profit])
+
+        return response
+    

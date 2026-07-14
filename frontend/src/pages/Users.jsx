@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { 
   Users as UsersIcon, 
@@ -37,7 +37,7 @@ export default function Users() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/users/');
+      const response = await api.get('/users/');
       setUsers(response.data.results || response.data);
       setError(null);
     } catch (err) {
@@ -108,9 +108,9 @@ export default function Users() {
 
     try {
       if (selectedUser) {
-        await axios.put(`/users/${selectedUser.id}/`, payload);
+        await api.put(`/users/${selectedUser.id}/`, payload);
       } else {
-        await axios.post('/users/', payload);
+        await api.post('/users/', payload);
       }
       handleCloseModal();
       fetchUsers();
@@ -130,7 +130,7 @@ export default function Users() {
     }
     if (!window.confirm("Are you sure you want to permanently delete this user account?")) return;
     try {
-      await axios.delete(`/users/${id}/`);
+      await api.delete(`/users/${id}/`);
       fetchUsers();
     } catch (err) {
       console.error("Delete user failed:", err);
@@ -145,7 +145,7 @@ export default function Users() {
     }
     try {
       const updatedStatus = !userRecord.is_active;
-      await axios.patch(`/users/${userRecord.id}/`, { is_active: updatedStatus });
+      await api.patch(`/users/${userRecord.id}/`, { is_active: updatedStatus });
       fetchUsers();
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -160,7 +160,7 @@ export default function Users() {
     }
     try {
       const newRole = userRecord.role === 'MANAGER' ? 'CASHIER' : 'MANAGER';
-      await axios.patch(`/users/${userRecord.id}/`, { role: newRole });
+      await api.patch(`/users/${userRecord.id}/`, { role: newRole });
       fetchUsers();
     } catch (err) {
       console.error("Failed to swap user roles:", err);

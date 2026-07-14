@@ -1,6 +1,6 @@
 
 from inventory.filters import InStockFilter
-from accounts.permissions import IsManager,IsCashier    
+from accounts.permissions import IsManager,IsCashier,IsManagerOrCashier    
 from rest_framework.permissions import IsAuthenticated,IsAdminUser
 from rest_framework import generics
 from inventory.models import Category,Product,Brands
@@ -18,6 +18,16 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
         if self.request.method=='GET':
             return [IsAuthenticated()]
         return [IsManager(),IsAdminUser()]
+class ProductListAPIView(generics.ListAPIView):
+    queryset=Product.objects.all().order_by('-id')
+    serializer_class=ProductSerializer
+    filter_class=ProductFilter
+    filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
+    search_fields=['name','category__name']
+    ordering_fields=['price']
+    def get_permissions(self):
+        return [IsAuthenticated()]
+        
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset=Product.objects.all().order_by('-id')
     serializer_class=ProductSerializer

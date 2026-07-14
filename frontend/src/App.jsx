@@ -1,58 +1,68 @@
-import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
+import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Layouts
+import MainLayout from './layouts/MainLayout';
+import AuthLayout from './layouts/AuthLayout';
+
+// Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import Categories from './pages/Categories';
+import Brands from './pages/Brands';
 import Sales from './pages/Sales';
+import Reports from './pages/Reports';
+import Profile from './pages/Profile';
 import Users from './pages/Users';
-import { Loader2 } from 'lucide-react';
-import './App.css';
 
-function MainAppContent() {
-  const { token, user, loading } = useAuth();
-  const [activePage, setActivePage] = useState('dashboard');
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-indigo-500 mb-4" />
-        <p className="text-slate-400 font-medium text-sm">Loading system components...</p>
-      </div>
-    );
-  }
-
-  // If not logged in, redirect to login page
-  if (!token || !user) {
-    return <Login />;
-  }
-
-  // Guard role routing
-  const isManagerOrAdmin = user.role === 'MANAGER' || user.is_superuser;
-  const currentActivePage = activePage === 'users' && !isManagerOrAdmin ? 'dashboard' : activePage;
-
+const App = () => {
   return (
-    <div className="min-h-screen flex bg-slate-950 text-slate-100">
-      {/* Sidebar Navigation */}
-      <Navbar activePage={currentActivePage} setActivePage={setActivePage} />
+    <BrowserRouter>
+      <AuthProvider>
+        <Toaster position="top-right" />
+        <Routes>
+          {/* Public Routes */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+          </Route>
 
-      {/* Main View Container */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-gradient-to-b from-slate-900/40 via-slate-950 to-slate-950">
-        {currentActivePage === 'dashboard' && <Dashboard />}
-        {currentActivePage === 'products' && <Products />}
-        {currentActivePage === 'categories' && <Categories />}
-        {currentActivePage === 'sales' && <Sales />}
-        {currentActivePage === 'users' && isManagerOrAdmin && <Users />}
-      </main>
-    </div>
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/products" element={<Products />} />
+              
+              {/* Modules restricted to Admin/Manager - Example role enforcement */}
+              <Route element={<ProtectedRoute roles={['Admin', 'Manager', 'admin', 'manager']} />}>
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/brands" element={<Brands />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/users" element={<Users />} />
+              </Route>
+              
+              {/* Fallback Unauthorized Route */}
+              <Route path="/unauthorized" element={
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <h1 className="text-4xl font-bold text-danger mb-4">403</h1>
+                  <h2 className="text-2xl font-semibold text-secondary mb-2">Access Denied</h2>
+                  <p className="text-gray-500">You don't have permission to view this page.</p>
+                </div>
+              } />
+            </Route>
+          </Route>
+          
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
-}
+};
 
-export default function App() {
-  return (
-    <AuthProvider>
-      <MainAppContent />
-    </AuthProvider>
-  );
-}
+export default App;

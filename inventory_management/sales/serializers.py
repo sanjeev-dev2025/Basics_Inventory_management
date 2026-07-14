@@ -6,12 +6,14 @@ class SaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sale
         fields = "__all__"
+        read_only_fields = ['cashier']
 
 
 class SaleItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleItem
         fields = "__all__"
+        read_only_fields = ['unit_price', 'subtotal']
 
     def create(self, validated_data):
         product = validated_data["product"]

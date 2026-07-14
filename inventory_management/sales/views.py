@@ -16,6 +16,9 @@ class SaleListCreateAPIView(generics.ListCreateAPIView):
         if self.request.method=='GET':
             return [IsAuthenticated()]
         return [IsManagerOrCashier()]  
+
+    def perform_create(self, serializer):
+        serializer.save(cashier=self.request.user)
 class SaleItemListCreateAPIView(generics.ListCreateAPIView):
     queryset=SaleItem.objects.all().order_by('-id')
     serializer_class=SaleItemSerializer

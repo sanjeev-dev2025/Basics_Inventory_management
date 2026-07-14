@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getCategories, deleteCategory, createCategory, updateCategory } from '../api/services';
+import { getBrands, deleteBrand, createBrand, updateBrand, getCategories } from '../api/services';
 import DataTable from '../components/DataTable';
 import { Plus, Edit, Trash2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -7,12 +7,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-const categorySchema = z.object({
+const brandSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  description: z.string().optional(),
+  category: z.coerce.number().min(1, 'Category is required'),
 });
 
-const Categories = () => {
+const Brands = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
@@ -21,7 +21,8 @@ const Categories = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingBrand, setEditingBrand] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -31,16 +32,25 @@ const Categories = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await getCategories({
+      const response = await getBrands({
         page: pagination.pageIndex + 1,
         search: debouncedSearch,
       });
       setData(response.data.results);
       setPageCount(Math.ceil(response.data.count / pagination.pageSize));
     } catch (error) {
-      toast.error('Failed to fetch categories');
+      toast.error('Failed to fetch brands');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories({ page: 1 });
+      setCategories(response.data.results || []);
+    } catch (e) {
+      console.error('Failed to load categories');
     }
   };
 
@@ -48,26 +58,30 @@ const Categories = () => {
     fetchData();
   }, [pagination.pageIndex, debouncedSearch]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
+    if (window.confirm('Are you sure you want to delete this brand?')) {
       try {
-        await deleteCategory(id);
-        toast.success('Category deleted successfully');
+        await deleteBrand(id);
+        toast.success('Brand deleted successfully');
         fetchData();
       } catch (error) {
-        toast.error('Failed to delete category');
+        toast.error('Failed to delete brand');
       }
     }
   };
 
-  const openModal = (category = null) => {
-    setEditingCategory(category);
+  const openModal = (brand = null) => {
+    setEditingBrand(brand);
     setIsModalOpen(true);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setEditingCategory(null);
+    setEditingBrand(null);
   };
 
   const columns = useMemo(
@@ -77,13 +91,8 @@ const Categories = () => {
         accessorKey: 'name',
       },
       {
-        header: 'Description',
-        accessorKey: 'description',
-      },
-      {
-        header: 'Created At',
-        accessorKey: 'created_at',
-        cell: (info) => new Date(info.getValue()).toLocaleDateString(),
+        header: 'Category',
+        accessorKey: 'category_name', // Display category name instead of ID
       },
       {
         header: 'Actions',
@@ -115,15 +124,15 @@ const Categories = () => {
     <div className="h-full flex flex-col">
       <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-secondary">Categories</h1>
-          <p className="text-gray-500 text-sm mt-1">Manage product categories</p>
+          <h1 className="text-2xl font-bold text-secondary">Brands</h1>
+          <p className="text-gray-500 text-sm mt-1">Manage product brands</p>
         </div>
         <button
           onClick={() => openModal()}
           className="bg-primary hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center shadow-md shadow-primary/20 transition-all"
         >
           <Plus size={18} className="mr-2" />
-          Add Category
+          Add Brand
         </button>
       </div>
 
@@ -141,18 +150,19 @@ const Categories = () => {
       </div>
 
       {isModalOpen && (
-        <CategoryModal
+        <BrandModal
           isOpen={isModalOpen}
           onClose={closeModal}
-          category={editingCategory}
+          brand={editingBrand}
           onSuccess={fetchData}
+          categories={categories}
         />
       )}
     </div>
   );
 };
 
-const CategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
+const BrandModal = ({ isOpen, onClose, brand, onSuccess, categories }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -160,25 +170,25 @@ const CategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
     handleSubmit,
     formState: { errors },
   } = useForm({
-    resolver: zodResolver(categorySchema),
-    defaultValues: category ? {
-      name: category.name,
-      description: category.description || '',
+    resolver: zodResolver(brandSchema),
+    defaultValues: brand ? {
+      name: brand.name,
+      category: brand.category,
     } : {
       name: '',
-      description: '',
+      category: '',
     },
   });
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      if (category) {
-        await updateCategory(category.id, data);
-        toast.success('Category updated successfully');
+      if (brand) {
+        await updateBrand(brand.id, data);
+        toast.success('Brand updated successfully');
       } else {
-        await createCategory(data);
-        toast.success('Category created successfully');
+        await createBrand(data);
+        toast.success('Brand created successfully');
       }
       onSuccess();
       onClose();
@@ -194,7 +204,7 @@ const CategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
       <div className="bg-cards rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-secondary">
-            {category ? 'Edit Category' : 'Add Category'}
+            {brand ? 'Edit Brand' : 'Add Brand'}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={24} />
@@ -213,13 +223,17 @@ const CategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              {...register('description')}
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
-            ></textarea>
-            {errors.description && <p className="mt-1 text-sm text-danger">{errors.description.message}</p>}
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              {...register('category')}
+              className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all bg-white"
+            >
+              <option value="">Select Category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {errors.category && <p className="mt-1 text-sm text-danger">{errors.category.message}</p>}
           </div>
 
           <div className="pt-4 flex justify-end space-x-3">
@@ -248,4 +262,4 @@ const CategoryModal = ({ isOpen, onClose, category, onSuccess }) => {
   );
 };
 
-export default Categories;
+export default Brands;

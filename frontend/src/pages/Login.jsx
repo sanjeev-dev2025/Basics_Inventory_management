@@ -1,124 +1,113 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
-import { ShieldCheck, Lock, User as UserIcon, Loader2 } from 'lucide-react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { Package } from 'lucide-react';
 
-export default function Login() {
-  const { login, error: authError } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+const loginSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+});
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-    setError(null);
-    setLoading(true);
+const Login = () => {
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+  });
+
+  // Redirect if already logged in
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  const onSubmit = async (data) => {
+    setIsSubmitting(true);
+    setErrorMsg('');
     try {
-      await login(username.trim(), password);
-    } catch (err) {
-      setError(err.message || 'Login failed. Please check credentials.');
+      await login(data);
+      navigate('/');
+    } catch (error) {
+      setErrorMsg(error.message || 'Login failed. Please check your credentials.');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background visual elements */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center">
-          <div className="bg-gradient-to-tr from-indigo-500 to-violet-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-500/10">
-            <ShieldCheck className="w-9 h-9 text-white" />
-          </div>
+    <div className="w-full max-w-md bg-cards p-8 rounded-2xl shadow-xl shadow-primary/5">
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+          <Package className="text-primary" size={32} />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-          Apex Inventory Portal
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
-          Enter credentials to access the management interface
-        </p>
+        <h2 className="text-2xl font-bold text-secondary">Welcome Back</h2>
+        <p className="text-gray-500 mt-2 text-sm">Sign in to access your inventory</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-slate-900/80 backdrop-blur-md py-8 px-4 border border-slate-800 shadow-2xl rounded-3xl sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Error alerts */}
-            {(error || authError) && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm font-medium">
-                {error || authError}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-slate-300">
-                Username
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <UserIcon className="h-5 h-5 text-slate-500" />
-                </div>
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition duration-200 text-sm"
-                  placeholder="admin"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300">
-                Password
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock className="h-5 h-5 text-slate-500" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition duration-200 text-sm"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-indigo-600/10 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin text-white" />
-                    Signing in...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </button>
-            </div>
-          </form>
-
-          
+      {errorMsg && (
+        <div className="mb-4 p-3 bg-danger/10 text-danger text-sm rounded-lg text-center font-medium">
+          {errorMsg}
         </div>
-      </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Username
+          </label>
+          <input
+            {...register('username')}
+            type="text"
+            className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+              errors.username ? 'border-danger' : 'border-gray-200'
+            }`}
+            placeholder="Enter your username"
+          />
+          {errors.username && (
+            <p className="mt-1 text-sm text-danger">{errors.username.message}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Password
+          </label>
+          <input
+            {...register('password')}
+            type="password"
+            className={`w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+              errors.password ? 'border-danger' : 'border-gray-200'
+            }`}
+            placeholder="••••••••"
+          />
+          {errors.password && (
+            <p className="mt-1 text-sm text-danger">{errors.password.message}</p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full py-3 px-4 bg-primary text-white rounded-xl font-medium hover:bg-primary-600 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all disabled:opacity-70 flex justify-center items-center"
+        >
+          {isSubmitting ? (
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            'Sign In'
+          )}
+        </button>
+      </form>
     </div>
   );
-}
+};
+
+export default Login;

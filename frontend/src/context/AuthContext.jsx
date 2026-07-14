@@ -1,91 +1,63 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import { login as loginService, getProfile } from '../api/services';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
-// Configure Axios defaults
-axios.defaults.baseURL = API_BASE_URL;
-
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('access_token') || null);
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token') || null);
   const [user, setUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Set auth header helper
-  const setAuthHeader = (tokenString) => {
-    if (tokenString) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${tokenString}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  };
-
-  // Check login state and load profile
-  const loadProfile = async (accessToken) => {
-    try {
-      setAuthHeader(accessToken);
-      const response = await axios.get('/profile/');
-      setUser(response.data);
-      setError(null);
-    } catch (err) {
-      console.error("Failed to load user profile:", err);
-      logout();
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    if (token) {
-      loadProfile(token);
-    } else {
+    const initAuth = async () => {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        try {
+          const response = await getProfile();
+          setUser(response.data);
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error("Failed to fetch profile on load", error);
+          // Token might be expired, interceptor will try to refresh it
+          // If refresh fails, it will redirect to login and clear tokens
+        }
+      }
       setLoading(false);
-    }
-  }, [token]);
+    };
 
-  // Login method
-  const login = async (username, password) => {
-    setLoading(true);
-    setError(null);
+    initAuth();
+  }, []);
+
+  const login = async (credentials) => {
     try {
-      const response = await axios.post('/token/', { username, password });
+      const response = await loginService(credentials);
       const { access, refresh } = response.data;
       
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
       
-      setToken(access);
-      setRefreshToken(refresh);
-      
-      // Load user profile
-      await loadProfile(access);
+      const profileResponse = await getProfile();
+      setUser(profileResponse.data);
+      setIsAuthenticated(true);
+      toast.success("Login successful!");
       return true;
-    } catch (err) {
-      console.error("Login failed:", err);
-      const msg = err.response?.data?.detail || "Invalid username or password";
-      setError(msg);
-      setLoading(false);
-      throw new Error(msg);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Login failed");
+      throw error;
     }
   };
 
-  // Logout method
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
-    setToken(null);
-    setRefreshToken(null);
     setUser(null);
-    setAuthHeader(null);
-    setLoading(false);
+    setIsAuthenticated(false);
+    toast.success("Logged out successfully");
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, loading, error, login, logout, API_BASE_URL }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

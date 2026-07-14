@@ -1,255 +1,251 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getDashboardData, getDailyReport, getMonthlyProfit, getLast7DaysProfit, getCategories, getBrands, getSales } from '../api/services';
+import { Package, Tags, ShoppingBag, AlertTriangle, TrendingUp, DollarSign } from 'lucide-react';
 import { 
-  Package, 
-  AlertTriangle, 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  CheckCircle2, 
-  Loader2 
-} from 'lucide-react';
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  BarChart, Bar, Legend
+} from 'recharts';
 
-export default function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [dailyReport, setDailyReport] = useState(null);
-  const [monthlyProfit, setMonthlyProfit] = useState(null);
+const DashboardCard = ({ title, value, icon, color, bgColor }) => (
+  <div className="bg-cards p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center transition-transform hover:-translate-y-1 duration-300">
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mr-4 ${bgColor} ${color}`}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-sm font-medium text-gray-500 mb-1">{title}</p>
+      <h3 className="text-2xl font-bold text-secondary">{value}</h3>
+    </div>
+  </div>
+);
+
+const Dashboard = () => {
+  const [stats, setStats] = useState({
+    total_products: 0,
+    total_categories: 0,
+    total_brands: 0,
+    low_stock_products: 0,
+    daily_sales: 0,
+    daily_profit: 0,
+    monthly_sales: 0,
+    monthly_profit: 0,
+    recent_sales: []
+  });
+  const [dailyData, setDailyData] = useState([]);
+  const [monthlyData, setMonthlyData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboard = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const [dashboardRes, dailyRes, monthlyRes] = await Promise.all([
-          axios.get('/dashboard/'),
-          axios.get('/daily-report/').catch(() => ({ data: { daily_profit: 0, daily_sales: 0 } })),
-          axios.get('/monthly-profit/').catch(() => ({ data: { monthly_profit: 0 } }))
+        const [dashRes, catRes, brandRes, dailyRes, monthlyRes, salesRes, chartRes] = await Promise.allSettled([
+          getDashboardData(),
+          getCategories({ page: 1 }),
+          getBrands({ page: 1 }),
+          getDailyReport(),
+          getMonthlyProfit(),
+          getSales({ page: 1 }),
+          getLast7DaysProfit()
         ]);
 
-        setStats(dashboardRes.data);
-        setDailyReport(dailyRes.data);
-        setMonthlyProfit(monthlyRes.data);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to load dashboard:", err);
-        setError("Unable to load dashboard details.");
+        const dashboardData = dashRes.status === 'fulfilled' ? dashRes.value.data : {};
+        const categoriesData = catRes.status === 'fulfilled' ? catRes.value.data : {};
+        const brandsData = brandRes.status === 'fulfilled' ? brandRes.value.data : {};
+        const dailyDataObj = dailyRes.status === 'fulfilled' ? dailyRes.value.data : {};
+        const monthlyDataObj = monthlyRes.status === 'fulfilled' ? monthlyRes.value.data : {};
+        const salesData = salesRes.status === 'fulfilled' ? salesRes.value.data : {};
+        const chartDataArr = chartRes.status === 'fulfilled' ? chartRes.value.data : [];
+
+        setStats({
+          total_products: dashboardData.total_products || 0,
+          total_categories: categoriesData.count || 0,
+          total_brands: brandsData.count || 0,
+          low_stock_products: dashboardData.low_stock_count || 0,
+          daily_sales: dailyDataObj.daily_sales || 0,
+          daily_profit: dailyDataObj.daily_profit || 0,
+          monthly_sales: monthlyDataObj.monthly_sales || 0,
+          monthly_profit: monthlyDataObj.monthly_profit || 0,
+          recent_sales: salesData.results ? salesData.results.slice(0, 5) : (Array.isArray(salesData) ? salesData.slice(0, 5) : [])
+        });
+
+        if (chartDataArr && Array.isArray(chartDataArr)) {
+          setDailyData(chartDataArr.map(item => ({
+            name: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+            sales: parseFloat(item.total_profit) // backend actually returns daily_profit from this endpoint, mapped to sales for UI chart
+          })));
+        }
+
+        setMonthlyData([{
+          name: 'This Month',
+          profit: parseFloat(monthlyDataObj.monthly_profit || 0)
+        }]);
+
+      } catch (error) {
+        console.error("Dashboard fetch error", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
+    fetchDashboard();
   }, []);
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="flex-1 p-8 text-center">
-        <div className="max-w-md mx-auto bg-red-500/10 border border-red-500/20 text-red-400 p-6 rounded-2xl">
-          <p className="font-semibold">{error}</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm transition"
-          >
-            Retry Loading
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const lowStockCount = stats?.low_stock_count || 0;
-  const isLowStock = lowStockCount > 0;
-
-  const statCards = [
-    {
-      title: 'Total Products',
-      value: stats?.total_products || 0,
-      icon: Package,
-      gradient: 'from-blue-600 to-cyan-500',
-      description: 'Items logged in database'
-    },
-    {
-      title: 'Low Stock Products',
-      value: lowStockCount,
-      icon: AlertTriangle,
-      gradient: isLowStock ? 'from-amber-500 to-orange-600' : 'from-emerald-500 to-teal-600',
-      description: stats?.low_stock_message || ''
-    },
-    {
-      title: "Today's Sales",
-      value: `$${parseFloat(dailyReport?.daily_sales || 0).toFixed(2)}`,
-      icon: TrendingUp,
-      gradient: 'from-indigo-600 to-violet-500',
-      description: 'Value of products checkout today'
-    },
-    {
-      title: "Monthly Profit",
-      value: `$${parseFloat(monthlyProfit?.monthly_profit || 0).toFixed(2)}`,
-      icon: DollarSign,
-      gradient: 'from-purple-600 to-pink-500',
-      description: 'Calculated this current calendar month'
-    }
-  ];
 
   return (
-    <div className="p-8 space-y-8 flex-1 overflow-y-auto">
-      {/* Welcome Heading */}
-      <div>
-        <h2 className="text-3xl font-extrabold text-white tracking-tight">
-          System Overview
-        </h2>
-        <p className="text-slate-400 mt-1">
-          Real-time analytics and inventory status log.
-        </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-secondary">Dashboard Overview</h1>
+          <p className="text-gray-500 text-sm mt-1">Here's what's happening in your store today.</p>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((card, i) => {
-          const Icon = card.icon;
-          return (
-            <div 
-              key={i} 
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-slate-700/80"
-            >
-              {/* Corner Accent Circle */}
-              <div className={`absolute -right-4 -top-4 w-24 h-24 bg-gradient-to-br ${card.gradient} opacity-5 rounded-full blur-xl`}></div>
-              
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-sm font-medium text-slate-400">{card.title}</p>
-                  <h3 className="text-2xl font-bold text-slate-100 mt-2 tracking-tight">
-                    {card.value}
-                  </h3>
-                </div>
-                <div className={`bg-gradient-to-br ${card.gradient} p-3 rounded-2xl shadow-lg`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <p className="text-xs text-slate-500 mt-4 font-medium flex items-center">
-                {card.title === 'Low Stock Products' && (
-                  <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isLowStock ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></span>
-                )}
-                {card.description}
-              </p>
-            </div>
-          );
-        })}
+      {/* Top Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-6">
+        <DashboardCard 
+          title="Total Products" 
+          value={stats.total_products} 
+          icon={<Package size={24} />} 
+          color="text-primary" 
+          bgColor="bg-primary/10" 
+        />
+        <DashboardCard 
+          title="Categories" 
+          value={stats.total_categories} 
+          icon={<Tags size={24} />} 
+          color="text-accent" 
+          bgColor="bg-accent/10" 
+        />
+        <DashboardCard 
+          title="Brands" 
+          value={stats.total_brands} 
+          icon={<ShoppingBag size={24} />} 
+          color="text-indigo-500" 
+          bgColor="bg-indigo-500/10" 
+        />
+        <DashboardCard 
+          title="Low Stock" 
+          value={stats.low_stock_products} 
+          icon={<AlertTriangle size={24} />} 
+          color="text-danger" 
+          bgColor="bg-danger/10" 
+        />
+        <DashboardCard 
+          title="Daily Sales" 
+          value={`$${parseFloat(stats.daily_sales || 0).toLocaleString()}`} 
+          icon={<TrendingUp size={24} />} 
+          color="text-success" 
+          bgColor="bg-success/10" 
+        />
+        <DashboardCard 
+          title="Daily Profit" 
+          value={`$${parseFloat(stats.daily_profit || 0).toLocaleString()}`} 
+          icon={<DollarSign size={24} />} 
+          color="text-emerald-500" 
+          bgColor="bg-emerald-500/10" 
+        />
+        <DashboardCard 
+          title="Monthly Sales" 
+          value={`$${parseFloat(stats.monthly_sales || 0).toLocaleString()}`} 
+          icon={<TrendingUp size={24} />} 
+          color="text-blue-500" 
+          bgColor="bg-blue-500/10" 
+        />
+        <DashboardCard 
+          title="Monthly Profit" 
+          value={`$${parseFloat(stats.monthly_profit || 0).toLocaleString()}`} 
+          icon={<DollarSign size={24} />} 
+          color="text-warning" 
+          bgColor="bg-warning/10" 
+        />
       </div>
 
-      {/* Row 2: Low Stock List & Profit Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Low Stock Alerts */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h4 className="text-lg font-bold text-slate-200">Low Stock Alerts</h4>
-              <p className="text-xs text-slate-400 mt-0.5">Products with quantity lower than 7 units</p>
-            </div>
-            {isLowStock ? (
-              <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold px-2.5 py-1 rounded-lg">
-                Action Required
-              </span>
-            ) : (
-              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Healthy
-              </span>
-            )}
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
-            {isLowStock ? (
-              stats?.low_stock_products.map((product, i) => (
-                <div 
-                  key={i} 
-                  className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800/80 rounded-2xl hover:border-slate-800 transition"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-200">{product.name}</p>
-                      <p className="text-xxs text-slate-500 mt-0.5">Critical restock threshold</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-                      {product.quantity} items left
-                    </span>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-                <div className="bg-emerald-500/10 p-3 rounded-full border border-emerald-500/20 mb-3">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                </div>
-                <p className="text-slate-300 font-semibold text-sm">All products fully stocked</p>
-                <p className="text-slate-500 text-xs mt-1">Stock levels across all items are currently sufficient.</p>
-              </div>
-            )}
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Area Chart */}
+        <div className="bg-cards p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-lg font-bold text-secondary mb-6">Daily Sales Report</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <RechartsTooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area type="monotone" dataKey="sales" stroke="#2563EB" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Profitability Summary Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between">
-          <div>
-            <h4 className="text-lg font-bold text-slate-200 mb-1">Financial Report</h4>
-            <p className="text-xs text-slate-400 mb-6">Overview of sales and profitability margins</p>
-          </div>
-
-          <div className="space-y-6 flex-1 justify-center flex flex-col">
-            {/* Sales Indicator */}
-            <div>
-              <div className="flex justify-between text-sm font-medium mb-2">
-                <span className="text-slate-400">Daily Sales Value</span>
-                <span className="text-slate-200">${parseFloat(dailyReport?.daily_sales || 0).toFixed(2)}</span>
-              </div>
-              <div className="w-full bg-slate-950 rounded-full h-3.5 border border-slate-800">
-                <div 
-                  className="bg-gradient-to-r from-indigo-500 to-violet-500 h-3.5 rounded-full" 
-                  style={{ width: `${Math.min(100, (parseFloat(dailyReport?.daily_sales || 0) / 1000) * 100)}%` }}
-                ></div>
-              </div>
-              <span className="text-xxs text-slate-500 mt-1.5 block">Progress bar relative to standard $1,000 target</span>
-            </div>
-
-            {/* Profits Margin Indicator */}
-            <div>
-              <div className="flex justify-between text-sm font-medium mb-2">
-                <span className="text-slate-400">Daily Net Profit</span>
-                <span className="text-emerald-400 font-semibold">${parseFloat(dailyReport?.daily_profit || 0).toFixed(2)}</span>
-              </div>
-              <div className="w-full bg-slate-950 rounded-full h-3.5 border border-slate-800">
-                <div 
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 h-3.5 rounded-full" 
-                  style={{ width: `${Math.min(100, (parseFloat(dailyReport?.daily_profit || 0) / 400) * 100)}%` }}
-                ></div>
-              </div>
-              <span className="text-xxs text-slate-500 mt-1.5 block">Progress bar relative to standard $400 target</span>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Date: {new Date().toLocaleDateString()}
-            </span>
-            <span>Updates hourly</span>
+        {/* Bar Chart */}
+        <div className="bg-cards p-6 rounded-2xl shadow-sm border border-gray-100">
+          <h3 className="text-lg font-bold text-secondary mb-6">Monthly Profit</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <RechartsTooltip 
+                  cursor={{fill: '#f8fafc'}}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="profit" fill="#14B8A6" radius={[4, 4, 0, 0]} barSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
+      </div>
 
+      {/* Recent Sales Table */}
+      <div className="bg-cards rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100">
+          <h3 className="text-lg font-bold text-secondary">Recent Sales</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 text-gray-500 text-xs uppercase">
+                <th className="px-6 py-4 font-semibold">Invoice No</th>
+                <th className="px-6 py-4 font-semibold">Date</th>
+                <th className="px-6 py-4 font-semibold text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {stats.recent_sales && stats.recent_sales.map((sale) => (
+                <tr key={sale.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-secondary">#INV-{String(sale.id).padStart(5, '0')}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{new Date(sale.created_at || sale.date || new Date()).toLocaleString()}</td>
+                  <td className="px-6 py-4 text-sm font-bold text-success text-right">${parseFloat(sale.total_amount || sale.amount || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+              {(!stats.recent_sales || stats.recent_sales.length === 0) && (
+                <tr>
+                  <td colSpan="3" className="px-6 py-8 text-center text-gray-500">No recent sales found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default Dashboard;

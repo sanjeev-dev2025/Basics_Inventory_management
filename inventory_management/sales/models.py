@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from inventory.models import Product    
+from inventory.models import Product,Brands,Category
 # Create your models here.
 class Sale(models.Model):
     cashier=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name='sales')
@@ -20,6 +20,8 @@ class SaleItem(models.Model):
         on_delete=models.PROTECT,
         related_name="sale_items"
     )
+    brand=models.ForeignKey(Brands,on_delete=models.PROTECT,related_name='brand_sale_items')
+    category=models.ForeignKey(Category,on_delete=models.PROTECT,related_name='category_sale_items')    
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)

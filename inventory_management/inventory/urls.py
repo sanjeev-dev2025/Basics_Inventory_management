@@ -10,5 +10,6 @@ urlpatterns=[
     path('brand/',BrandsListCreateAPIView.as_view(),name='brand'),
     path('brand/<int:pk>/',BrandsRetrieveUpdateAPIView.as_view(),name='brand'),
     path('brand/<int:pk>/',BrandsDestroyAPIView.as_view(),name='brand'),
+    path('product/',ProductListAPIView.as_view(),name='product'),   
     ] 
 
