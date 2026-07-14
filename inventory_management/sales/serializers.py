@@ -10,6 +10,8 @@ class SaleSerializer(serializers.ModelSerializer):
 
 
 class SaleItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
     class Meta:
         model = SaleItem
         fields = "__all__"

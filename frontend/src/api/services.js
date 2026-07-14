@@ -38,6 +38,7 @@ export const deleteBrand = (id) => api.delete(`/brand/${id}/`);
 
 // Sales Services
 export const getSales = (params) => api.get('/sale/', { params });
+export const getSale = (id) => api.get(`/sale/${id}/`);
 export const createSale = (data) => api.post('/sale/', data);
 export const getSaleItems = (params) => api.get('/sale_item/', { params });
 export const createSaleItem = (data) => api.post('/sale_item/', data);

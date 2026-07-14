@@ -46,7 +46,7 @@ const Sidebar = ({ mobileOpen, setMobileOpen }) => {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-cards shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex items-center justify-center h-16 border-b border-gray-100">
-          <h1 className="text-2xl font-bold text-primary">Inventory<span className="text-secondary">Sys</span></h1>
+          <h1 className="text-2xl font-bold text-primary">Inventory <span className="text-secondary">Management System</span></h1>
         </div>
         
         <div className="flex flex-col flex-1 overflow-y-auto">

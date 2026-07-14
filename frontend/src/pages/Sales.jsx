@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { getSales, createSale, getProducts, createSaleItem } from '../api/services';
+import { getSales, createSale, getProducts, createSaleItem, getSaleItems } from '../api/services';
 import DataTable from '../components/DataTable';
 import { Plus, Eye, Printer, X } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -12,6 +12,8 @@ const Sales = () => {
   const [searchTerm, setSearchTerm] = useState(''); // Maybe no search endpoint, but keeping standard
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedSale, setSelectedSale] = useState(null);
   const [products, setProducts] = useState([]);
 
   const fetchData = async () => {
@@ -50,9 +52,7 @@ const Sales = () => {
   const closeModal = () => setIsModalOpen(false);
 
   const printInvoice = (sale) => {
-    // A simple window.print wrapper for a new window or just an alert for now
-    toast.success(`Printing Invoice #${sale.id}`);
-    window.print();
+    window.open(`/invoice/${sale.id}`, '_blank');
   };
 
   const columns = useMemo(
@@ -78,6 +78,7 @@ const Sales = () => {
         cell: ({ row }) => (
           <div className="flex items-center space-x-3">
             <button
+              onClick={() => { setSelectedSale(row.original); setIsDetailsModalOpen(true); }}
               className="text-primary hover:text-primary-700 transition-colors"
               title="View Details"
             >
@@ -132,6 +133,15 @@ const Sales = () => {
           onClose={closeModal} 
           onSuccess={fetchData} 
           products={products}
+        />
+      )}
+
+      {isDetailsModalOpen && selectedSale && (
+        <SaleDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={() => setIsDetailsModalOpen(false)}
+          sale={selectedSale}
+          onPrint={() => printInvoice(selectedSale)}
         />
       )}
     </div>
@@ -294,6 +304,108 @@ const CreateSaleModal = ({ isOpen, onClose, onSuccess, products }) => {
               )}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SaleDetailsModal = ({ isOpen, onClose, sale, onPrint }) => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        const response = await getSaleItems({ sale: sale.id, page_size: 100 });
+        setItems(response.data.results || []);
+      } catch (err) {
+        toast.error('Failed to load sale details');
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (isOpen) {
+      fetchItems();
+    }
+  }, [isOpen, sale.id]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-6 border-b border-gray-100 shrink-0">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Sale Details</h2>
+            <p className="text-gray-500 text-sm mt-1">Invoice #{String(sale.id).padStart(5, '0')}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto flex-1">
+          <div className="mb-6 flex justify-between">
+            <div>
+              <p className="text-sm text-gray-500">Date</p>
+              <p className="font-medium">{new Date(sale.date || sale.created_at).toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Total Amount</p>
+              <p className="font-bold text-primary text-lg">${parseFloat(sale.total_amount).toFixed(2)}</p>
+            </div>
+          </div>
+          
+          <h3 className="font-semibold text-gray-700 mb-3 border-b pb-2">Items</h3>
+          {loading ? (
+            <div className="flex justify-center p-8">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-600">
+                    <th className="px-4 py-3 rounded-l-lg font-medium">Product</th>
+                    <th className="px-4 py-3 font-medium text-center">Qty</th>
+                    <th className="px-4 py-3 font-medium text-right">Price</th>
+                    <th className="px-4 py-3 rounded-r-lg font-medium text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-4 text-gray-500">No items found.</td>
+                    </tr>
+                  ) : (
+                    items.map(item => (
+                      <tr key={item.id} className="border-b border-gray-50 last:border-0">
+                        <td className="px-4 py-3">{item.product_name || `Product #${item.product}`}</td>
+                        <td className="px-4 py-3 text-center">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right">${parseFloat(item.unit_price).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium">${parseFloat(item.subtotal).toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        
+        <div className="p-6 border-t border-gray-100 shrink-0 flex justify-end space-x-3 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-white transition-colors font-medium"
+          >
+            Close
+          </button>
+          <button
+            onClick={onPrint}
+            className="px-5 py-2 bg-primary text-white rounded-xl hover:bg-primary-600 transition-colors font-medium flex items-center shadow-md shadow-primary/20"
+          >
+            <Printer size={18} className="mr-2" />
+            Print Invoice
+          </button>
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import Users from './pages/Users';
+import Invoice from './pages/Invoice';
 
 const App = () => {
   return (
@@ -32,6 +33,7 @@ const App = () => {
 
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
+            <Route path="/invoice/:id" element={<Invoice />} />
             <Route element={<MainLayout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/sales" element={<Sales />} />

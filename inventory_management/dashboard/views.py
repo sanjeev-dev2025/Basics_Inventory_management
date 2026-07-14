@@ -110,6 +110,9 @@ class DailyReportCSVAPIView(GenericAPIView):
 
         # Header
         writer.writerow([
+            "Date",
+            "Brand",
+            "Category",
             "Product",
             "Quantity",
             "Cost Price",
@@ -128,6 +131,9 @@ class DailyReportCSVAPIView(GenericAPIView):
             total_profit += profit
 
             writer.writerow([
+                item.sale.created_at.date(),
+                item.brand.name,
+                item.category.name,
                 item.product.name,
                 item.quantity,
                 item.product.cost_price,
@@ -161,9 +167,11 @@ class MonthlyReportCSVAPIView(GenericAPIView):
         # Header
         writer.writerow([
             "Date",
+            "Brand",
+            "Category",
             "Product",
             "Quantity",
-            "Cost Price",
+            "Cost Price",   
             "Selling Price",
             "Subtotal",
             "Profit"
@@ -179,7 +187,9 @@ class MonthlyReportCSVAPIView(GenericAPIView):
             total_profit += profit
 
             writer.writerow([
-                item.sale.created_at.strftime("%Y-%m-%d"),
+                item.sale.created_at.date(),
+                item.brand.name,
+                item.category.name,
                 item.product.name,
                 item.quantity,
                 item.product.cost_price,

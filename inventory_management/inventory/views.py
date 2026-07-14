@@ -21,7 +21,7 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
 class ProductListAPIView(generics.ListAPIView):
     queryset=Product.objects.all().order_by('-id')
     serializer_class=ProductSerializer
-    filter_class=ProductFilter
+    filterset_class=ProductFilter
     filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
     search_fields=['name','category__name']
     ordering_fields=['price']
@@ -31,7 +31,7 @@ class ProductListAPIView(generics.ListAPIView):
 class ProductListCreateAPIView(generics.ListCreateAPIView):
     queryset=Product.objects.all().order_by('-id')
     serializer_class=ProductSerializer
-    filter_class=ProductFilter
+    filterset_class=ProductFilter
     filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
     search_fields=['name','category__name']
     ordering_fields=['price']
@@ -51,7 +51,7 @@ class ProductDestroyAPIView(generics.DestroyAPIView):
     queryset=Product.objects.all()
     serializer_class=ProductSerializer
     filter_backends=[DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter,InStockFilter]
-    filter_class=ProductFilter
+    filterset_class=ProductFilter
     search_fields=['name','category__name']
     ordering_fields=['price']   
     def get_permissions(self):

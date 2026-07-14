@@ -37,10 +37,10 @@ export default function Navbar({ activePage, setActivePage }) {
           </div>
           <div>
             <h1 className="font-bold text-lg bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-              Inventory Management
+              Inventory 
             </h1>
             <span className="text-xs font-semibold text-indigo-400 tracking-wider uppercase">
-              System
+              Management
             </span>
           </div>
         </div>

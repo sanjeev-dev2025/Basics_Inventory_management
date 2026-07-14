@@ -19,10 +19,19 @@ class SaleListCreateAPIView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(cashier=self.request.user)
+
+class SaleRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Sale.objects.all()
+    serializer_class = SaleSerializer
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsManagerOrCashier()]
+
 class SaleItemListCreateAPIView(generics.ListCreateAPIView):
     queryset=SaleItem.objects.all().order_by('-id')
     serializer_class=SaleItemSerializer
-    filter_class=SaleItemFilter
+    filterset_class=SaleItemFilter
     filter_backends=[InStockFilter,DjangoFilterBackend,filters.SearchFilter,filters.OrderingFilter]   
     search_fields=['product__name']
     ordering_fields=['quantity']
