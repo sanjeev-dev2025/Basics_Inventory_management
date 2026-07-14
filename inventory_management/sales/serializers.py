@@ -18,13 +18,13 @@ class SaleItemSerializer(serializers.ModelSerializer):
         quantity = validated_data["quantity"]
 
         # Check stock availability
-        if product.quantity < quantity:
+        if product.stock < quantity:
             raise serializers.ValidationError(
                 {"quantity": "Not enough stock available."}
             )
 
         # Decrease stock
-        product.quantity -= quantity
+        product.stock -= quantity
         product.save()
 
         # Auto-fill selling price and subtotal

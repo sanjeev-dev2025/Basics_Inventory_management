@@ -11,11 +11,21 @@ class Category(models.Model):
         ordering=['-id' ]
     def __str__(self):
         return self.name        
+class Brands(models.Model):
+    name=models.CharField(max_length=100)
+    category=models.ForeignKey(Category,on_delete=models.CASCADE)
+    created_at=models.DateTimeField(auto_now_add=True)
+    updated_at=models.DateTimeField(auto_now=True) 
+    class Meta:
+        ordering=['-id']
+    def __str__(self):
+        return self.name
 class Product(models.Model):
     name=models.CharField(max_length=100)
     category=models.ForeignKey(Category,on_delete=models.CASCADE)
+    brand=models.ForeignKey(Brands,on_delete=models.CASCADE)
     price=models.DecimalField(max_digits=10,decimal_places=2)
-    quantity=models.IntegerField(default=0)
+    stock=models.IntegerField(default=0)
     created_at=models.DateTimeField(auto_now_add=True)
     updated_at=models.DateTimeField(auto_now=True) 
     cost_price=models.DecimalField(max_digits=10,decimal_places=2)

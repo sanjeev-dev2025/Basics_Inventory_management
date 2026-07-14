@@ -1,12 +1,12 @@
 from django.shortcuts import render
 
 # Create your views here.
-from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from inventory.models import Product
 from sales.models import Sale,SaleItem
 from django.db.models import Sum
-class DashboardAPIView(APIView):
+class DashboardAPIView(GenericAPIView):
     def get(self, request):
         low_stock = Product.objects.filter(quantity__lt=7)
 
@@ -30,7 +30,7 @@ class DashboardAPIView(APIView):
 
 from datetime import date, timedelta
 
-class Last7DaysProfitAPIView(APIView):
+class Last7DaysProfitAPIView(GenericAPIView):
     def get(self, request):
 
         # 1. Calculate the date range
@@ -59,7 +59,7 @@ class Last7DaysProfitAPIView(APIView):
         return Response(formatted_data)
 from decimal import Decimal
 from django.db.models import F  
-class DailyReportAPIView(APIView):
+class DailyReportAPIView(GenericAPIView):
     def get(self, request):
         today_items = SaleItem.objects.filter(
             sale__created_at__date=date.today()
@@ -73,7 +73,7 @@ class DailyReportAPIView(APIView):
             daily_profit += (selling - cost) * item.quantity
 
         return Response({"daily_profit": daily_profit,"daily_sales":daily_sales})
-class MonthlyProfitAPIView(APIView):
+class MonthlyProfitAPIView(GenericAPIView):
     def get(self, request):
         monthly_sales = Sale.objects.filter(
             created_at__year=date.today().year,

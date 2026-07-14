@@ -24,7 +24,7 @@ class SaleItemListCreateAPIView(generics.ListCreateAPIView):
     search_fields=['product__name']
     ordering_fields=['quantity']
     pagination_class=PageNumberPagination  
-    pagination_class.page_size=2
+    pagination_class.page_size=4
     def get_permissions(self):
         if self.request.method=='GET':
             return [IsAuthenticated()]
@@ -36,3 +36,4 @@ class SaleItemUpdateAPIView(generics.UpdateAPIView):
         if self.request.method=='GET':
             return [IsAuthenticated] 
         return[IsManagerOrCashier()]     
+
